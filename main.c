@@ -1,7 +1,6 @@
 #define _GNU_SOURCE
 
 #include <arpa/inet.h>
-#include <errno.h>
 #include <fcntl.h>
 #include <pthread.h>
 #include <signal.h>
@@ -10,9 +9,6 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
-
-static const char header[] =
-    "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n";
 
 static socklen_t SOCKLEN = sizeof(struct sockaddr);
 #define BS 65536
@@ -40,7 +36,25 @@ static inline void socket_init(int port) {
   if (listen(server_socket, 3) < 0)
     exit(3);
 }
+
+static inline void get_handle(int client_socket, char *buf) {
+  static const char header[] =
+      "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n";
+  send(client_socket, header, sizeof(header), 0);
+
+  int fd = open("index.html", O_RDONLY);
+  int pipefds[2];
+  pipe(pipefds);
+  int bs = splice(fd, 0, pipefds[1], 0, BS, 0);
+  splice(pipefds[0], 0, client_socket, 0, bs, 0);
+}
+
+#define write_str(fd, str) write(fd, str, sizeof(str))
 static inline void post_handle(int client_socket, char *buf, int bs) {
+  static const char header[] =
+      "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n";
+  send(client_socket, header, sizeof(header), 0);
+
   char *pos = strstr(buf, "boundary=");
   char *end = strstr(pos, "\r\n");
   pos += 9;
@@ -55,20 +69,24 @@ static inline void post_handle(int client_socket, char *buf, int bs) {
   end = strstr(pos, boundary) - 4;
   *end++ = 0;
   char *id = pos;
-
   if (!(pos = strstr(end, "name=\"file\"")))
-    ;
+    write_str(client_socket, "<p>file upload failed</p>");
+  else
+    write_str(client_socket, "<p>file upload success</p>");
+
   pos = strstr(pos, "\r\n\r\n") + 4;
   end = strstr(pos, boundary) - 4;
-  int fd = creat(id, S_IRUSR | S_IWUSR);
-  printf("%x,%x\n", fd, errno);
+  int fd;
+  if ((fd = creat(id, S_IRUSR | S_IWUSR) == -1))
+    write_str(client_socket, "<p>file save failed</p>");
+  else
+    write_str(client_socket, "<p>file save success</p>");
   write(fd, pos, end - pos);
   close(fd);
 }
 
 static void *client_handle(void *arg) {
-  int bs, pipefds[2], client_socket = *(int *)arg;
-  pipe(pipefds);
+  int bs, client_socket = *(int *)arg;
   char buf[BS];
 
   bs = read(client_socket, buf, BS);
@@ -77,17 +95,12 @@ static void *client_handle(void *arg) {
 
   switch (buf[0]) {
   case 'G':
+    get_handle(client_socket, buf);
     break;
-
   case 'P':
     post_handle(client_socket, buf, bs);
+    break;
   }
-
-  send(client_socket, header, sizeof(header), 0);
-  int fd = open("index.html", O_RDONLY);
-
-  bs = splice(fd, 0, pipefds[1], 0, BS, 0);
-  splice(pipefds[0], 0, client_socket, 0, bs, 0);
 
   close(client_socket);
   pthread_exit(NULL);
