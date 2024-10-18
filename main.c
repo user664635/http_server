@@ -50,29 +50,34 @@ static void *client_handle(void *arg) {
   puts(buf);
 
   switch (buf[0]) {
-    char boundary[128], *pos, *end;
+    char *boundary, *pos, *end;
     int file_size, fd;
   case 'G':
     break;
 
   case 'P':
     pos = strstr(buf, "boundary=");
-    sscanf(pos, "boundary=%s", boundary);
-    len = strlen(boundary);
-    pos += len;
-    if (!strstr(pos, boundary)) {
-      bs = read(client_socket, buf, BS);
-      buf[bs] = 0;
-      if (!(pos = strstr(buf, boundary)))
-        ;
-      if (!(pos = strstr(pos, "\r\n\r\n")))
-        ;
-      if (!(end = strstr(pos, boundary)))
-        ;
-      fd = open("test", O_CREAT | O_WRONLY | O_TRUNC);
-      write(fd, pos, end - pos);
-      close(fd);
-    }
+    end = strstr(pos, "\r\n");
+    pos += 9;
+    *end++ = 0;
+    boundary = pos;
+
+    if (!strstr(end, boundary))
+      bs += read(client_socket, end = buf + bs, BS);
+    if (!(pos = strstr(end, "name=\"user\"")))
+      ;
+    pos = strstr(pos, "\r\n\r\n") + 4;
+    end = strstr(pos, boundary) - 2;
+    *end++ = 0;
+
+    if (!(pos = strstr(end, "name=\"file\"")))
+      ;
+    pos = strstr(pos, "\r\n\r\n") + 4;
+    end = strstr(pos, boundary) - 2;
+    fd = creat("test", 0);
+    write(fd, pos, end - pos);
+    close(fd);
+
   }
 
   send(client_socket, header, sizeof(header), 0);
