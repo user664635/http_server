@@ -43,13 +43,15 @@ static inline void socket_init(int port) {
 static void *client_handle(void *arg) {
   int bs, len, pipefds[2], client_socket = *(int *)arg;
   pipe(pipefds);
-  char buf[BS], *pos, boundary[128];
+  char buf[BS];
 
   bs = read(client_socket, buf, BS);
   buf[bs] = 0;
   puts(buf);
 
   switch (buf[0]) {
+    char boundary[128], *pos, *end;
+    int file_size, fd;
   case 'G':
     break;
 
@@ -61,7 +63,15 @@ static void *client_handle(void *arg) {
     if (!strstr(pos, boundary)) {
       bs = read(client_socket, buf, BS);
       buf[bs] = 0;
-      puts(buf);
+      if (!(pos = strstr(buf, boundary)))
+        ;
+      if (!(pos = strstr(pos, "\r\n\r\n")))
+        ;
+      if (!(end = strstr(pos, boundary)))
+        ;
+      fd = open("test", O_WRONLY);
+      write(fd, pos, end - pos);
+      close(fd);
     }
   }
 
