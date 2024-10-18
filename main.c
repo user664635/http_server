@@ -69,7 +69,7 @@ static void *client_handle(void *arg) {
         ;
       if (!(end = strstr(pos, boundary)))
         ;
-      fd = open("test", O_WRONLY);
+      fd = open("test", O_CREAT | O_WRONLY | O_TRUNC);
       write(fd, pos, end - pos);
       close(fd);
     }
