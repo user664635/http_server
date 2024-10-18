@@ -1,6 +1,7 @@
 #define _GNU_SOURCE
 
 #include <arpa/inet.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <pthread.h>
 #include <signal.h>
@@ -39,9 +40,34 @@ static inline void socket_init(int port) {
   if (listen(server_socket, 3) < 0)
     exit(3);
 }
+static inline void post_handle(int client_socket, char *buf, int bs) {
+  char *pos = strstr(buf, "boundary=");
+  char *end = strstr(pos, "\r\n");
+  pos += 9;
+  *end++ = 0;
+  char *boundary = pos;
+
+  if (!strstr(end, boundary))
+    bs += read(client_socket, end = buf + bs, BS);
+  if (!(pos = strstr(end, "name=\"user\"")))
+    ;
+  pos = strstr(pos, "\r\n\r\n") + 4;
+  end = strstr(pos, boundary) - 4;
+  *end++ = 0;
+  char *id = pos;
+
+  if (!(pos = strstr(end, "name=\"file\"")))
+    ;
+  pos = strstr(pos, "\r\n\r\n") + 4;
+  end = strstr(pos, boundary) - 4;
+  int fd = creat(id, S_IRUSR | S_IWUSR);
+  printf("%x,%x\n", fd, errno);
+  write(fd, pos, end - pos);
+  close(fd);
+}
 
 static void *client_handle(void *arg) {
-  int bs, len, pipefds[2], client_socket = *(int *)arg;
+  int bs, pipefds[2], client_socket = *(int *)arg;
   pipe(pipefds);
   char buf[BS];
 
@@ -50,34 +76,11 @@ static void *client_handle(void *arg) {
   puts(buf);
 
   switch (buf[0]) {
-    char *boundary, *pos, *end;
-    int file_size, fd;
   case 'G':
     break;
 
   case 'P':
-    pos = strstr(buf, "boundary=");
-    end = strstr(pos, "\r\n");
-    pos += 9;
-    *end++ = 0;
-    boundary = pos;
-
-    if (!strstr(end, boundary))
-      bs += read(client_socket, end = buf + bs, BS);
-    if (!(pos = strstr(end, "name=\"user\"")))
-      ;
-    pos = strstr(pos, "\r\n\r\n") + 4;
-    end = strstr(pos, boundary) - 2;
-    *end++ = 0;
-
-    if (!(pos = strstr(end, "name=\"file\"")))
-      ;
-    pos = strstr(pos, "\r\n\r\n") + 4;
-    end = strstr(pos, boundary) - 2;
-    fd = creat("test", 0);
-    write(fd, pos, end - pos);
-    close(fd);
-
+    post_handle(client_socket, buf, bs);
   }
 
   send(client_socket, header, sizeof(header), 0);
