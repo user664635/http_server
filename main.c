@@ -38,48 +38,51 @@ static inline void socket_init(int port) {
 
   if (listen(server_socket, 3) < 0)
     exit(3);
+  puts("server init");
 }
 
-static inline void post_handle(int client_socket, char *buf, int bs) {
-
-  char *pos = strstr(buf, "boundary=");
+static inline int post_handle(int client_socket, char *buf, char *file_name,
+                              int bs) {
+  char *pos = strstr(buf + 20, "boundary=");
   if (!pos)
-    goto exit;
+    return 1;
   char *end = strstr(pos, "\r\n");
   *end++ = 0;
   char *boundary = pos + 9;
+  puts(boundary);
 
   if (!strstr(end, boundary))
-    bs += read(client_socket, end = buf + bs, BS);
+    buf[bs += read(client_socket, end = buf + bs, BS - bs)] = 0;
 
   write_client("user identifying\n");
   if (!(pos = strstr(end, "name=\"user\"")))
-    goto exit;
+    return 2;
   pos = strstr(pos, "\r\n\r\n") + 4;
   end = strstr(pos, boundary) - 4;
   if (pos == end)
-    goto exit;
+    return 3;
   *end++ = '/';
   *end++ = 0;
+
   char path[64] = "data/";
-  char file_name[] = "test.c";
   strcat(path, pos);
   strcat(path, file_name);
+  puts(path);
 
   write_client("file uploading\n");
   if (!(pos = strstr(end, "name=\"file\"")))
-    goto exit;
+    return 4;
 
   pos = strstr(pos, "\r\n\r\n") + 4;
   end = strstr(pos, boundary) - 4;
   int fd;
   write_client("file creating\n");
   if (((fd = creat(path, S_IRUSR | S_IWUSR)) == -1))
-    goto exit;
+    return 5;
 
   write_client("file writing\n");
   if (write(fd, pos, end - pos) == -1)
-    goto exit;
+    return 6;
   close(fd);
 
   char cmd[64] = "2>&1 ./test.sh ";
@@ -87,14 +90,17 @@ static inline void post_handle(int client_socket, char *buf, int bs) {
   while ((bs = read(fd, buf, BS)) > 0)
     write(client_socket, buf, bs);
 
-exit:
+  return 0;
 }
 
 static void *client_handle(void *arg) {
   int bs, client_socket = *(int *)arg;
   char buf[BS];
 
+  puts("receiving");
   bs = read(client_socket, buf, BS);
+  if (bs <= 0)
+    goto exit;
   buf[bs] = 0;
   puts(buf);
 
@@ -103,9 +109,11 @@ static void *client_handle(void *arg) {
   char path[64] = "test";
   strcat(path, pos);
   strcat(path, "/index.html");
+  puts(path);
   int fd = open(path, O_RDONLY);
   if (fd == -1)
     goto exit;
+
   write_client("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n"
                "<!DOCTYPE html><html><head>"
                "<meta charset =\"utf-8\">"
@@ -117,18 +125,18 @@ static void *client_handle(void *arg) {
                "<input type=\"submit\" /> </form>"
                "<span style=\"white-space:pre-line\">");
 
-  if (buf[0] == 'P')
-    post_handle(client_socket, buf, bs);
-
   int pipefds[2];
   pipe(pipefds);
-  bs = splice(fd, 0, pipefds[1], 0, BS, 0);
-  splice(pipefds[0], 0, client_socket, 0, bs, 0);
+  int len = splice(fd, 0, pipefds[1], 0, BS, 0);
+  splice(pipefds[0], 0, client_socket, 0, len, 0);
 
+  if (buf[0] == 'P')
+    printf("%x\n", post_handle(client_socket, buf, pos, bs));
   write_client("</span></body></html>");
 
 exit:
   close(client_socket);
+  puts("connection closed");
   pthread_exit(NULL);
 }
 
@@ -138,7 +146,12 @@ int main(int argc, char **argv) {
   socket_init(atoi(argv[1]));
 
   while (1) {
-    int client_socket = accept(server_socket, &(struct sockaddr){}, &SOCKLEN);
+    struct sockaddr_in client_addr;
+    int client_socket =
+        accept(server_socket, (struct sockaddr *)&client_addr, &SOCKLEN);
+    uint8_t *ip = (uint8_t *)&client_addr.sin_addr.s_addr;
+    printf("connected from %u.%u.%u.%u:%u\n", ip[0], ip[1], ip[2], ip[3],
+           client_addr.sin_port);
     pthread_t thread_id;
     pthread_create(&thread_id, 0, client_handle, &client_socket);
     pthread_detach(thread_id);
