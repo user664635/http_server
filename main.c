@@ -13,6 +13,7 @@
 static socklen_t SOCKLEN = sizeof(struct sockaddr);
 #define BS 65536
 
+#define write_str(fd, str) write(fd, str, sizeof(str))
 static int server_socket;
 static void sigint_handle(int sig) {
   close(server_socket);
@@ -38,9 +39,8 @@ static inline void socket_init(int port) {
 }
 
 static inline void get_handle(int client_socket, char *buf) {
-  static const char header[] =
-      "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n";
-  send(client_socket, header, sizeof(header), 0);
+  write_str(client_socket,
+            "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n");
 
   int fd = open("index.html", O_RDONLY);
   int pipefds[2];
@@ -49,11 +49,10 @@ static inline void get_handle(int client_socket, char *buf) {
   splice(pipefds[0], 0, client_socket, 0, bs, 0);
 }
 
-#define write_str(fd, str) write(fd, str, sizeof(str))
 static inline void post_handle(int client_socket, char *buf, int bs) {
-  static const char header[] =
-      "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n";
-  send(client_socket, header, sizeof(header), 0);
+  write_str(client_socket,
+            "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n");
+  write_str(client_socket, "<span style=\"white-space:pre-line\">");
 
   char *pos = strstr(buf, "boundary=");
   char *end = strstr(pos, "\r\n");
@@ -72,32 +71,40 @@ static inline void post_handle(int client_socket, char *buf, int bs) {
   *end++ = 0;
   char *id = pos;
   if (!(pos = strstr(end, "name=\"file\""))) {
-    write_str(client_socket, "<p>file upload failed</p>");
-    return;
+    write_str(client_socket, "file upload failed\n");
+    goto exit;
   }
-  write_str(client_socket, "<p>file upload success</p>");
+  write_str(client_socket, "file upload success\n");
 
   pos = strstr(pos, "\r\n\r\n") + 4;
   end = strstr(pos, boundary) - 4;
   int fd;
   if (((fd = creat(id, S_IRUSR | S_IWUSR)) == -1)) {
-    write_str(client_socket, "<p>file create failed</p>");
-    return;
+    write_str(client_socket, "file create failed\n");
+    goto exit;
   }
-  write_str(client_socket, "<p>file create success</p>");
+  write_str(client_socket, "file create success\n");
   if (write(fd, pos, end - pos) == -1) {
-    write_str(client_socket, "<p>file write failed</p>");
-    return;
+    write_str(client_socket, "file write failed\n");
+    goto exit;
   }
-  write_str(client_socket, "<p>file write success</p>");
+  write_str(client_socket, "file write success\n");
   close(fd);
 
   char cmd[64] = "2>&1 clang -c ";
   fd = fileno(popen(strcat(cmd, id), "r"));
+  bool err = 0;
   while ((bs = read(fd, buf, BS)) > 0) {
-    write(client_socket,buf,bs);
+    write(client_socket, buf, bs);
+    err = 1;
   }
-  write_str(client_socket, "<p>complie success</p>");
+  if (err)
+    goto exit;
+
+  write_str(client_socket, "complie success\n");
+
+exit:
+  write_str(client_socket, "</span>");
 }
 
 static void *client_handle(void *arg) {

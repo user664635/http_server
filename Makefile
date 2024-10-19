@@ -8,4 +8,4 @@ all: server
 	./server 8082
 
 server: main.c
-	clang -Ofast main.c -o server
+	clang -std=c23 -Ofast main.c -o server
