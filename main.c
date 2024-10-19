@@ -125,7 +125,7 @@ static void *client_handle(void *arg) {
   bs = splice(fd, 0, pipefds[1], 0, BS, 0);
   splice(pipefds[0], 0, client_socket, 0, bs, 0);
 
-  write_client("\nexiting</span></body></html>");
+  write_client("</span></body></html>");
 
 exit:
   close(client_socket);
