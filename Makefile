@@ -8,4 +8,4 @@ all: server
 	./server 8082
 
 server: main.c
-	clang -std=c23 -Ofast main.c -o server
+	clang -std=c2y -O3 -march=native main.c -o server
