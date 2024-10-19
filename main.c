@@ -41,7 +41,6 @@ static inline void socket_init(int port) {
 }
 
 static inline void get_handle(int client_socket, char *buf) {
-  write_client("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n");
 
   int fd = open("index.html", O_RDONLY);
   int pipefds[2];
@@ -51,7 +50,6 @@ static inline void get_handle(int client_socket, char *buf) {
 }
 
 static inline void post_handle(int client_socket, char *buf, int bs) {
-  write_client("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n");
   write_client("<span style=\"white-space:pre-line\">");
 
   char *pos = strstr(buf, "boundary=");
@@ -109,6 +107,7 @@ static void *client_handle(void *arg) {
   buf[bs] = 0;
   puts(buf);
 
+  write_client("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n");
   switch (buf[0]) {
   case 'G':
     get_handle(client_socket, buf);
