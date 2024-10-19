@@ -40,17 +40,7 @@ static inline void socket_init(int port) {
     exit(3);
 }
 
-static inline void get_handle(int client_socket, char *buf) {
-
-  int fd = open("index.html", O_RDONLY);
-  int pipefds[2];
-  pipe(pipefds);
-  int bs = splice(fd, 0, pipefds[1], 0, BS, 0);
-  splice(pipefds[0], 0, client_socket, 0, bs, 0);
-}
-
 static inline void post_handle(int client_socket, char *buf, int bs) {
-  write_client("<span style=\"white-space:pre-line\">");
 
   char *pos = strstr(buf, "boundary=");
   if (!pos)
@@ -98,7 +88,6 @@ static inline void post_handle(int client_socket, char *buf, int bs) {
     write(client_socket, buf, bs);
 
 exit:
-  write_client("\nexiting</span>");
 }
 
 static void *client_handle(void *arg) {
@@ -109,26 +98,36 @@ static void *client_handle(void *arg) {
   buf[bs] = 0;
   puts(buf);
 
+  char *pos = strstr(buf, "/");
+  *strstr(pos, " HTTP/") = 0;
+  char path[64] = "test";
+  strcat(path, pos);
+  strcat(path, "/index.html");
+  int fd = open(path, O_RDONLY);
+  if (fd == -1)
+    goto exit;
   write_client("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n"
                "<!DOCTYPE html><html><head>"
                "<meta charset =\"utf-8\">"
                "<title>test</title>"
-               "</head><body>");
-
-  write_client("<form enctype=\"multipart/form-data\" method=\"post\">"
+               "</head><body>"
+               "<form enctype=\"multipart/form-data\" method=\"post\">"
                "<input type=\"text\" name=\"user\" />"
                "<input type=\"file\" name=\"file\" />"
-               "<input type=\"submit\" />"
-               "</form></body></html>");
-  switch (buf[0]) {
-  case 'G':
-    get_handle(client_socket, buf);
-    break;
-  case 'P':
-    post_handle(client_socket, buf, bs);
-    break;
-  }
+               "<input type=\"submit\" /> </form>"
+               "<span style=\"white-space:pre-line\">");
 
+  if (buf[0] == 'P')
+    post_handle(client_socket, buf, bs);
+
+  int pipefds[2];
+  pipe(pipefds);
+  bs = splice(fd, 0, pipefds[1], 0, BS, 0);
+  splice(pipefds[0], 0, client_socket, 0, bs, 0);
+
+  write_client("\nexiting</span></body></html>");
+
+exit:
   close(client_socket);
   pthread_exit(NULL);
 }
