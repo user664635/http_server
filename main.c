@@ -67,6 +67,8 @@ static inline void post_handle(int client_socket, char *buf, int bs) {
     goto exit;
   pos = strstr(pos, "\r\n\r\n") + 4;
   end = strstr(pos, boundary) - 4;
+  if (pos == end)
+    goto exit;
   *end++ = '/';
   *end++ = 0;
   char path[64] = "data/";
@@ -96,7 +98,7 @@ static inline void post_handle(int client_socket, char *buf, int bs) {
     write(client_socket, buf, bs);
 
 exit:
-  write_client("exiting</span>");
+  write_client("\nexiting</span>");
 }
 
 static void *client_handle(void *arg) {
@@ -107,7 +109,17 @@ static void *client_handle(void *arg) {
   buf[bs] = 0;
   puts(buf);
 
-  write_client("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n");
+  write_client("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n"
+               "<!DOCTYPE html><html><head>"
+               "<meta charset =\"utf-8\">"
+               "<title>test</title>"
+               "</head><body>");
+
+  write_client("<form enctype=\"multipart/form-data\" method=\"post\">"
+               "<input type=\"text\" name=\"user\" />"
+               "<input type=\"file\" name=\"file\" />"
+               "<input type=\"submit\" />"
+               "</form></body></html>");
   switch (buf[0]) {
   case 'G':
     get_handle(client_socket, buf);
