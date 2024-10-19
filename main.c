@@ -67,22 +67,37 @@ static inline void post_handle(int client_socket, char *buf, int bs) {
     ;
   pos = strstr(pos, "\r\n\r\n") + 4;
   end = strstr(pos, boundary) - 4;
+  *end++ = '.';
+  *end++ = 'c';
   *end++ = 0;
   char *id = pos;
-  if (!(pos = strstr(end, "name=\"file\"")))
+  if (!(pos = strstr(end, "name=\"file\""))) {
     write_str(client_socket, "<p>file upload failed</p>");
-  else
-    write_str(client_socket, "<p>file upload success</p>");
+    return;
+  }
+  write_str(client_socket, "<p>file upload success</p>");
 
   pos = strstr(pos, "\r\n\r\n") + 4;
   end = strstr(pos, boundary) - 4;
   int fd;
-  if ((fd = creat(id, S_IRUSR | S_IWUSR) == -1))
-    write_str(client_socket, "<p>file save failed</p>");
-  else
-    write_str(client_socket, "<p>file save success</p>");
-  write(fd, pos, end - pos);
+  if (((fd = creat(id, S_IRUSR | S_IWUSR)) == -1)) {
+    write_str(client_socket, "<p>file create failed</p>");
+    return;
+  }
+  write_str(client_socket, "<p>file create success</p>");
+  if (write(fd, pos, end - pos) == -1) {
+    write_str(client_socket, "<p>file write failed</p>");
+    return;
+  }
+  write_str(client_socket, "<p>file write success</p>");
   close(fd);
+
+  char cmd[64] = "2>&1 clang -c ";
+  fd = fileno(popen(strcat(cmd, id), "r"));
+  while ((bs = read(fd, buf, BS)) > 0) {
+    write(client_socket,buf,bs);
+  }
+  write_str(client_socket, "<p>complie success</p>");
 }
 
 static void *client_handle(void *arg) {
