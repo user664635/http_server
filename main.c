@@ -55,15 +55,18 @@ static inline void post_handle(int client_socket, char *buf, int bs) {
   write_client("<span style=\"white-space:pre-line\">");
 
   char *pos = strstr(buf, "boundary=");
+  if (!pos)
+    goto exit;
   char *end = strstr(pos, "\r\n");
-  pos += 9;
   *end++ = 0;
-  char *boundary = pos;
+  char *boundary = pos + 9;
 
   if (!strstr(end, boundary))
     bs += read(client_socket, end = buf + bs, BS);
+
+  write_client("user identifying\n");
   if (!(pos = strstr(end, "name=\"user\"")))
-    ;
+    goto exit;
   pos = strstr(pos, "\r\n\r\n") + 4;
   end = strstr(pos, boundary) - 4;
   *end++ = '/';
@@ -73,41 +76,29 @@ static inline void post_handle(int client_socket, char *buf, int bs) {
   strcat(path, pos);
   strcat(path, file_name);
 
-  if (!(pos = strstr(end, "name=\"file\""))) {
-    write_client("file upload failed\n");
+  write_client("file uploading\n");
+  if (!(pos = strstr(end, "name=\"file\"")))
     goto exit;
-  }
-  write_client("file upload success\n");
 
   pos = strstr(pos, "\r\n\r\n") + 4;
   end = strstr(pos, boundary) - 4;
   int fd;
-  if (((fd = creat(path, S_IRUSR | S_IWUSR)) == -1)) {
-    write_client("file create failed\n");
+  write_client("file creating\n");
+  if (((fd = creat(path, S_IRUSR | S_IWUSR)) == -1))
     goto exit;
-  }
-  write_client("file create success\n");
-  if (write(fd, pos, end - pos) == -1) {
-    write_client("file write failed\n");
+
+  write_client("file writing\n");
+  if (write(fd, pos, end - pos) == -1)
     goto exit;
-  }
-  write_client("file write success\n");
   close(fd);
 
-  char cmd[64] = "./test.sh ";
+  char cmd[64] = "2>&1 ./test.sh ";
   fd = fileno(popen(strcat(cmd, path), "r"));
-  bool err = 0;
-  while ((bs = read(fd, buf, BS)) > 0) {
+  while ((bs = read(fd, buf, BS)) > 0)
     write(client_socket, buf, bs);
-    err = 1;
-  }
-  if (err)
-    goto exit;
-
-  write_client("complie success\n");
 
 exit:
-  write_client("</span>");
+  write_client("exiting</span>");
 }
 
 static void *client_handle(void *arg) {
