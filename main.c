@@ -15,6 +15,9 @@ static socklen_t SOCKLEN = sizeof(struct sockaddr);
 
 #define write_fd(fd, str) write(fd, str, sizeof(str))
 #define write_client(str) write_fd(client_socket, str)
+static constexpr char head_html[] = {
+#embed "head.html"
+};
 
 static int server_socket;
 static void sigint_handle(int sig) {
@@ -114,17 +117,8 @@ static void *client_handle(void *arg) {
   if (fd == -1)
     goto exit;
 
-  write_client("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n"
-               "<!DOCTYPE html><html><head>"
-               "<meta charset =\"utf-8\">"
-               "<title>test</title>"
-               "</head><body>"
-               "<form enctype=\"multipart/form-data\" method=\"post\">"
-               "<input type=\"text\" name=\"user\" />"
-               "<input type=\"file\" name=\"file\" />"
-               "<input type=\"submit\" /> </form>"
-               "<span style=\"white-space:pre-line\">");
-
+  write_client("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n");
+  write_client(head_html);
   int pipefds[2];
   pipe(pipefds);
   int len = splice(fd, 0, pipefds[1], 0, BS, 0);

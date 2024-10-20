@@ -7,5 +7,5 @@ all: server
 2: server
 	./server 8082
 
-server: main.c
+server: main.c head.html
 	clang -std=c2y -O3 -march=native main.c -o server

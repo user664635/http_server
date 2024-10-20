@@ -2,7 +2,7 @@
 cd ${1%/*}
 obj=$(mktemp)
 bin=$(mktemp)
-cc="clang -std=c2y -xc -c"
+cc="clang -std=c23 -xc -c"
 src=${1##*/}
 
 echo -e "compiling..."
