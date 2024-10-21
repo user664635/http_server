@@ -2,15 +2,18 @@
 cd ${1%/*}
 obj=$(mktemp)
 bin=$(mktemp)
-cc="clang -std=c23 -xc -c"
+cc="clang -fno-pic -fno-PIC -fno-plt -fno-pie -std=c23 -xc -c"
+ld="clang -no-pie -fno-pic -fno-PIC -fno-plt -fno-pie "
 src=${1##*/}
+tl=0.01
+ml=16384
 
 echo -e "compiling..."
-$cc $src -o $obj &&\
-echo -e "success!\nlinking..." &&\
-clang $obj ../../objs/001.o -o $bin &&\
-echo -e "success!\nexecuting..." &&\
-ulimit -v 65536 &&\
-timeout 0.001 $bin &&\
-echo success!
-rm /tmp/tmp*
+if $cc $src -o $obj &&
+	echo -e "success!\nlinking..." &&
+	$ld $obj ../../objs/$src.o -o $bin; then
+	echo -e "success!\nexecuting...\n"
+	ulimit -v $ml
+	/bin/time -v timeout $tl $bin 
+	rm /tmp/tmp*
+fi

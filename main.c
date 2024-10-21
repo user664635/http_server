@@ -109,9 +109,9 @@ static void *client_handle(void *arg) {
 
   char *pos = strstr(buf, "/");
   *strstr(pos, " HTTP/") = 0;
-  char path[64] = "test";
+  char path[64] = "ques";
   strcat(path, pos);
-  strcat(path, "/index.html");
+  strcat(path, ".html");
   puts(path);
   int fd = open(path, O_RDONLY);
   if (fd == -1)
