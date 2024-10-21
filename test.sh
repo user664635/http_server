@@ -14,6 +14,6 @@ if $cc $src -o $obj &&
 	$ld $obj ../../objs/$src.o -o $bin; then
 	echo -e "success!\nexecuting...\n"
 	ulimit -v $ml
-	/bin/time -v timeout $tl $bin 
+	timeout $tl $bin && echo "success!"
 	rm /tmp/tmp*
 fi
