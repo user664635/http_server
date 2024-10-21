@@ -1,5 +1,5 @@
 CC = clang -c
-CFLAGS = -O3 -Wall -std=c2y -pipe
+CFLAGS = -O3 -std=c2y -pipe
 CFLAGS += -ffunction-sections -fdata-sections 
 CFLAGS += -fno-pic -fno-PIC -fno-pie -fno-plt
 LD = clang -fuse-ld=mold
