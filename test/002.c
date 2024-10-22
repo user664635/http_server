@@ -13,10 +13,12 @@ static inline double _avg(int *arr, int n) {
 }
 double avg(int *arr, int n);
 int main(void) {
-  int *arr = (int *)(random + N);
+  int *arrs = (int *)(random + N);
   for (int i = 0; i < N; ++i) {
-    double corr_ans = _avg(arr + i * 256, random[i]);
-    double ans = avg(arr + i * 256, random[i]);
+    int *arr = arrs + i * 256;
+    int n = random[i] + 1;
+    double corr_ans = _avg(arr + i * 256, n);
+    double ans = avg(arr + i * 256, n);
     if (__builtin_elementwise_abs(corr_ans - ans) > 1e-10) {
       printf("%d/%d\n", i, N);
       printf("correct:%.20f\n", corr_ans);

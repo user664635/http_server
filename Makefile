@@ -19,7 +19,7 @@ all: server
 objs/main.o: main.c head.html
 	$(CC) $(CFLAGS) main.c -o objs/main.o
 
-objs/%.o: test/%.c 
+objs/%.o: test/%.c random 
 	$(CC) $(CFLAGS) $< -o $@
 
 ques: $(objs)
