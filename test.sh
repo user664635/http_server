@@ -5,7 +5,7 @@ bin=$(mktemp)
 cc="clang -fno-pic -fno-PIC -fno-plt -fno-pie -std=c23 -xc -c"
 ld="clang -fuse-ld=lld -no-pie -fno-pic -fno-PIC -fno-plt -fno-pie "
 src=${1##*/}
-tl=0.01
+tl=0.1
 ml=16384
 
 echo -e "compiling..."

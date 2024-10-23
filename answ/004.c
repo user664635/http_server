@@ -5,7 +5,7 @@ static inline void swap(int *a, int *b) {
 }
 static inline int partition(int *arr, int l, int h) {
   int pivot = arr[h];
-  for (int j = l + 1; j < h; ++j)
+  for (int j = l; j < h; ++j)
     if (arr[j] < pivot)
       swap(arr + j, arr + l++);
   swap(arr + l, arr + h);
