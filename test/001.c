@@ -1,52 +1,11 @@
 #include <stdio.h>
 
-typedef float __attribute((ext_vector_type(2))) vec2;
-typedef struct {
-  vec2 v0, v1, v2;
-} Triangle;
-typedef struct {
-  vec2 cent, diag;
-} Rectangle;
-typedef struct {
-  vec2 cent;
-  float r;
-} Circle;
-typedef struct {
-  enum { triangle, rectangle, circle } type;
-  union {
-    Triangle triangle;
-    Rectangle rectangle;
-    Circle circle;
-  };
-} Shape;
-
-#define abs __builtin_elementwise_abs
-static inline double area(Shape shape) {
-  switch (shape.type) {
-  case triangle:
-    vec2 v0 = shape.triangle.v0;
-    vec2 v1 = shape.triangle.v1;
-    vec2 v2 = shape.triangle.v2;
-    double dx1 = v1.x - v0.x;
-    double dx2 = v2.x - v0.x;
-    double dy1 = v1.y - v0.y;
-    double dy2 = v2.y - v0.y;
-    return .5 * abs(dx1 * dy2 - dx2 * dy1);
-  case rectangle:
-    vec2 diag = shape.rectangle.diag - shape.rectangle.cent;
-    return abs(diag.x * diag.y);
-  case circle:
-    double r = shape.circle.r;
-    return 3.14 * r * r;
-  }
-}
-
 static inline double _calc_triangle_area(double vert[6]) {
   long double dx1 = vert[2] - vert[0];
   long double dx2 = vert[4] - vert[0];
   long double dy1 = vert[3] - vert[1];
   long double dy2 = vert[5] - vert[1];
-  return .5 * abs(dx1 * dy2 - dx2 * dy1);
+  return .5 * __builtin_elementwise_abs(dx1 * dy2 - dx2 * dy1);
 }
 double calc_triangle_area(double[6]);
 #define N 1024
