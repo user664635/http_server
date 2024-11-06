@@ -1,7 +1,7 @@
 #define _GNU_SOURCE
 
-#include <arpa/inet.h>
 #include <fcntl.h>
+#include <netinet/in.h>
 #include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
@@ -10,7 +10,6 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-static socklen_t SOCKLEN = sizeof(struct sockaddr);
 #define BS 65536
 
 #define write_fd(fd, str) write(fd, str, sizeof(str))
@@ -26,17 +25,16 @@ static void sigint_handle(int sig) {
 }
 
 static inline void socket_init(int port) {
-  if (!(server_socket = socket(AF_INET, SOCK_STREAM, 0)))
+  if ((server_socket = socket(AF_INET6, SOCK_STREAM, 0)) < 0)
     exit(1);
   signal(SIGINT, sigint_handle);
 
-  if (bind(server_socket,
-           (struct sockaddr *)&(struct sockaddr_in){
-               .sin_family = AF_INET,
-               .sin_addr.s_addr = INADDR_ANY,
-               .sin_port = htons(port),
-           },
-           SOCKLEN) < 0)
+  struct sockaddr_in6 server_addr = {};
+  server_addr.sin6_family = AF_INET6;
+  server_addr.sin6_addr = in6addr_any;
+  server_addr.sin6_port = htons(port);
+  if (bind(server_socket, (struct sockaddr *)&server_addr,
+           sizeof(server_addr)) < 0)
     exit(2);
 
   if (listen(server_socket, 3) < 0)
@@ -140,12 +138,13 @@ int main(int argc, char **argv) {
   socket_init(atoi(argv[1]));
 
   while (1) {
-    struct sockaddr_in client_addr;
+    struct sockaddr_in6 client_addr;
+    socklen_t socklen = sizeof(client_addr);
     int client_socket =
-        accept(server_socket, (struct sockaddr *)&client_addr, &SOCKLEN);
-    uint8_t *ip = (uint8_t *)&client_addr.sin_addr.s_addr;
-    printf("connected from %u.%u.%u.%u:%u\n", ip[0], ip[1], ip[2], ip[3],
-           client_addr.sin_port);
+        accept(server_socket, (struct sockaddr *)&client_addr, &socklen);
+    uint16_t *ip = (uint16_t *)&client_addr.sin6_addr;
+    printf("connected from [%x:%x:%x:%x:%x:%x:%x:%x]:%u\n", ip[0], ip[1], ip[2],
+           ip[3], ip[4], ip[5], ip[6], ip[7], client_addr.sin6_port);
     pthread_t thread_id;
     pthread_create(&thread_id, 0, client_handle, &client_socket);
     pthread_detach(thread_id);

@@ -16,6 +16,9 @@ all: server
 2: server
 	./server 8082
 
+3: server
+	./server 8083
+
 objs/main.o: main.c head.html
 	$(CC) $(CFLAGS) main.c -o objs/main.o
 

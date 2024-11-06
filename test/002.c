@@ -17,8 +17,8 @@ int main(void) {
   for (int i = 0; i < N; ++i) {
     int *arr = arrs + i * 256;
     int n = random[i] + 1;
-    double corr_ans = _avg(arr + i * 256, n);
-    double ans = avg(arr + i * 256, n);
+    double corr_ans = _avg(arr, n);
+    double ans = avg(arr, n);
     if (__builtin_elementwise_abs(corr_ans - ans) > 1e-10) {
       printf("%d/%d\n", i, N);
       printf("correct:%.20f\n", corr_ans);
