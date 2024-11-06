@@ -1,0 +1,27 @@
+<h1>题目五：面积</h1>
+<h2>面积</h2>
+<h2>
+typedef float __attribute((ext_vector_type(2))) vec2;
+typedef struct {
+  vec2 v0, v1, v2;
+} Triangle;
+typedef struct {
+  vec2 cent, diag;
+} Rectangle;
+typedef struct {
+  vec2 cent;
+  float r;
+} Circle;
+typedef struct {
+  enum { triangle, rectangle, circle } type;
+  union {
+    Triangle triangle;
+    Rectangle rectangle;
+    Circle circle;
+  };
+} Shape;
+
+#define abs __builtin_elementwise_abs
+double area(Shape shape);
+</h2>
+注意：
