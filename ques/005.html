@@ -1,27 +1,28 @@
 <h1>题目五：面积</h1>
-<h2>面积</h2>
+<h2>计算不同种类图形的面积</h2>
 <h2>
-typedef float __attribute((ext_vector_type(2))) vec2;
-typedef struct {
-  vec2 v0, v1, v2;
-} Triangle;
-typedef struct {
-  vec2 cent, diag;
-} Rectangle;
-typedef struct {
-  vec2 cent;
-  float r;
-} Circle;
-typedef struct {
-  enum { triangle, rectangle, circle } type;
-  union {
-    Triangle triangle;
-    Rectangle rectangle;
-    Circle circle;
-  };
-} Shape;
+	typedef float __attribute((ext_vector_type(2))) vec2;
+	typedef struct {
+	vec2 v0, v1, v2; //为三个定点坐标，可用v0.x,v0.y获取v0的x,y坐标
+	} Triangle;
+	typedef struct {
+	vec2 cent, diag; //cent为一个顶点坐标，diag为cent的对角线顶点坐标
+	} Rectangle;
+	typedef struct {
+	vec2 cent; //cent为中心坐标
+	float r;//r为半径
+	} Circle;
+	typedef struct {
+	enum { triangle, rectangle, circle } type;
+	union {
+	Triangle triangle;
+	Rectangle rectangle;
+	Circle circle;
+	};
+	} Shape;
 
-#define abs __builtin_elementwise_abs
-double area(Shape shape);
+	#define abs __builtin_elementwise_abs
+	double area(Shape shape); //这是你要写的函数
 </h2>
 注意：
+希望能通过此题意识到非面向对象语言的局限性
